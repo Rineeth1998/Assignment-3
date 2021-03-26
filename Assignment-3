@@ -1,0 +1,54 @@
+Problem 1: 
+CREATE FUNCTION account_audit()
+RETURNS trigger AS
+BEGIN
+IF (Pointer = 'INSERT') OR (Pointer = 'UPDATE') THEN
+        INSERT INTO account_audit (dt,account_id,account_name,account_balance) VALUES (now(),NEW.account_id,NEW.account_name,NEW.account_balance);
+    ELSEIF (Pointer = 'DELETE') THEN
+        INSERT INTO account_audit (dt,deleted,account_id,account_name,account_balance) VALUES (now(),TRUE,OLD.account_id,OLD.account_name,OLD.account_balance);
+    END IF;
+    RETURN NULL;
+END;
+CREATE TRIGGER account_audit AFTER INSERT OR UPDATE OR DELETE ON account FOR EACH ROW EXECUTE PROCEDURE account_audit();
+
+Problem 2: 
+CREATE FUNCTION account_sales_archive()
+RETURNS trigger AS
+BEGIN
+INSERT INTO sales_archive (dt,account_id,amount) SELECT dt,account_id,amount FROM sales WHERE account_id = OLD.account_id;
+DELETE FROM sales WHERE account_id = OLD.account_id;
+RETURN OLD;
+END;
+CREATE TRIGGER account_sales_archive BEFORE DELETE ON account FOR EACH ROW EXECUTE PROCEDURE account_sales_archive();
+
+Problem 3 and 4 :  I have doubt in this questions.
+
+Problem 5:
+CREATE FUNCTION balance_sales()
+RETURNS trigger AS
+BEGIN
+IF (TG_OP = 'INSERT') THEN
+
+    IF (SELECT account_balance FROM account WHERE account_id = NEW.account_id) 
+       >=  NEW.amount THEN
+        UPDATE account SET account_balance = account_balance - NEW.amount 
+            WHERE account_id = NEW.account_id;
+        --need to change to handle differences of old and new sales amounts
+        RETURN NEW;
+    ELSE
+        RAISE EXCEPTION 'Over balance';
+    END IF;
+ELSE -- IF (TG_OP = 'UPDATE') THEN 
+    IF (SELECT account_balance FROM account WHERE account_id = NEW.account_id) 
+        >=  NEW.amount - OLD.amount THEN
+        UPDATE account 
+              SET account_balance = account_balance - NEW.amount + OLD.amount 
+              WHERE account_id = NEW.account_id;
+        -- need to change to handle differences of old and new sales amounts
+        RETURN NEW;
+    ELSE
+        RAISE EXCEPTION 'Over balance';
+    END IF;
+END IF;
+END;
+CREATE TRIGGER balance_sales BEFORE INSERT OR UPDATE ON sales FOR EACH ROW EXECUTE PROCEDURE balance_sales();
