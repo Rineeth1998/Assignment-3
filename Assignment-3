@@ -27,7 +27,7 @@ Problem 5:
 CREATE FUNCTION balance_sales()
 RETURNS trigger AS
 BEGIN
-IF (TG_OP = 'INSERT') THEN
+IF (pointer = 'INSERT') THEN
 
     IF (SELECT account_balance FROM account WHERE account_id = NEW.account_id) 
        >=  NEW.amount THEN
@@ -38,7 +38,7 @@ IF (TG_OP = 'INSERT') THEN
     ELSE
         RAISE EXCEPTION 'Over balance';
     END IF;
-ELSE -- IF (TG_OP = 'UPDATE') THEN 
+ELSE -- IF (pointer = 'UPDATE') THEN 
     IF (SELECT account_balance FROM account WHERE account_id = NEW.account_id) 
         >=  NEW.amount - OLD.amount THEN
         UPDATE account 
